@@ -73,7 +73,8 @@ class geneticalgorithm():
                                        'crossover_type':'uniform',\
                                        'max_iteration_without_improv':None},\
                      convergence_curve=True,\
-                         progress_bar=True):
+                         progress_bar=True,\
+                         parallel=True):
 
 
         '''
@@ -123,6 +124,7 @@ class geneticalgorithm():
         @param convergence_curve <True/False> - Plot the convergence curve or not
         Default is True.
         @progress_bar <True/False> - Show progress bar or not. Default is True.
+        @parallel <True/False> - Use distributed computing. Default is True.
         
         for more details and examples of implementation please visit:
             https://github.com/rmsolgi/geneticalgorithm
@@ -208,6 +210,7 @@ class geneticalgorithm():
         else:
             self.progress_bar=False
         ############################################################# 
+        self.parallel = parallel 
         ############################################################# 
         # input algorithm's parameters
         
@@ -299,10 +302,15 @@ class geneticalgorithm():
                 (self.var_bound[i][1]-self.var_bound[i][0])    
                 solo[i]=var[i].copy()
 
-
-            obj=self.sim(var)            
-            solo[self.dim]=obj
             pop[p]=solo.copy()
+        if self.parallel:
+            pop[:,-1]  = self.sim(pop[:,:-1])
+            obj = pop[-1,-1]
+        else:
+            for p in range(0,self.pop_s):
+                solo = pop[p]
+                obj=self.sim(solo[:-1])            
+                solo[self.dim]=obj
 
         #############################################################
 
@@ -319,13 +327,11 @@ class geneticalgorithm():
         while t<=self.iterate:
             
             if self.progress_bar==True:
-                self.progress(t,self.iterate,status="GA is running...")
+                self.progress(t,self.iterate,status="myGA is running...")
             #############################################################
             #Sort
             pop = pop[pop[:,self.dim].argsort()]
 
-                
-            
             if pop[0,self.dim]<self.best_function:
                 counter=0
                 self.best_function=pop[0,self.dim].copy()
@@ -386,7 +392,8 @@ class geneticalgorithm():
             
             for k in range(0,self.par_s):
                 pop[k]=par[k].copy()
-                
+            
+            
             for k in range(self.par_s, self.pop_s, 2):
                 r1=np.random.randint(0,par_count)
                 r2=np.random.randint(0,par_count)
@@ -399,14 +406,17 @@ class geneticalgorithm():
                 
                 ch1=self.mut(ch1)
                 ch2=self.mutmidle(ch2,pvar1,pvar2)               
-                solo[: self.dim]=ch1.copy()                
-                obj=self.sim(ch1)
-                solo[self.dim]=obj
-                pop[k]=solo.copy()                
-                solo[: self.dim]=ch2.copy()                
-                obj=self.sim(ch2)               
-                solo[self.dim]=obj
-                pop[k+1]=solo.copy()
+                pop[k,:-1]=ch1.copy()            
+                pop[k+1,:-1]=ch2.copy()
+
+            if self.parallel:
+                pop[self.par_s:,-1]=self.sim(pop[self.par_s:,:-1])
+            else:
+                for k in range(self.par_s, self.pop_s):
+                    ch = pop[k,:-1]
+                    obj=self.sim(ch)
+                    pop[k,-1]=obj.copy()
+
         #############################################################       
             t+=1
             if counter > self.mniwi:
@@ -414,7 +424,7 @@ class geneticalgorithm():
                 if pop[0,self.dim]>=self.best_function:
                     t=self.iterate
                     if self.progress_bar==True:
-                        self.progress(t,self.iterate,status="GA is running...")
+                        self.progress(t,self.iterate,status="myGA is running...")
                     time.sleep(2)
                     t+=1
                     self.stop_mniwi=True
@@ -542,7 +552,7 @@ class geneticalgorithm():
             obj=func_timeout(self.funtimeout,self.evaluate)
         except FunctionTimedOut:
             print("given function is not applicable")
-        assert (obj!=None), "After "+str(self.funtimeout)+" seconds delay "+\
+        assert (obj is not None), "After "+str(self.funtimeout)+" seconds delay "+\
                 "func_timeout: the given function does not provide any output"
         return obj
 
