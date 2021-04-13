@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import numpy as np
 from geneticalgorithm import geneticalgorithm as ga
-
+import sys
 
 def banana(x,y,a=1,b=100):
 	return (a-x)**2 + b*(y-x**2)**2
@@ -18,6 +18,7 @@ model=ga(function= banana_par,#lambda x: banana(x[0],x[1]),
          variable_type='real',
          variable_boundaries=np.array([[-10, 10],[-10, 10]]),
          function_timeout=120,
+         convergence_curve=False,
          algorithm_parameters={'max_num_iteration': 50,\
                                        'population_size':100,\
                                        'mutation_probability':0.1,\
@@ -28,5 +29,8 @@ model=ga(function= banana_par,#lambda x: banana(x[0],x[1]),
                                        'max_iteration_without_improv':None},
          parallel=True)
 
-print(model)
+
 model.run()
+print(model.best_variable)
+#sys.stdout.write(model.best_variable)
+
